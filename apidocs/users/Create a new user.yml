@@ -1,0 +1,89 @@
+info:
+  name: Create a new user
+  type: http
+  seq: 1
+  tags:
+    - users
+
+http:
+  method: POST
+  url: "{{baseUrl}}/users/create"
+  body:
+    type: json
+    data: |-
+      {
+        "username": "bruno",
+        "email": "bruno@gmail.com",
+        "password": "bruno"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 201 Response
+    description: Successful Response
+    request:
+      url: "{{baseUrl}}/users/create"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "username": "",
+            "email": "",
+            "password": ""
+          }
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": 0,
+            "username": "",
+            "email": ""
+          }
+  - name: 422 Response
+    description: Validation Error
+    request:
+      url: "{{baseUrl}}/users/create"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "username": "",
+            "email": "",
+            "password": ""
+          }
+    response:
+      status: 422
+      statusText: Unprocessable Entity
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": [
+              {
+                "loc": [],
+                "msg": "",
+                "type": "",
+                "input": "",
+                "ctx": {}
+              }
+            ]
+          }
+
+docs: Create and saves a new user to database

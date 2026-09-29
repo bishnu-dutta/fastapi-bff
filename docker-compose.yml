@@ -1,0 +1,49 @@
+services:
+  mailhog:
+    image: mailhog/mailhog
+    container_name: fastint_mailhog
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile # check the name, can be case-sensitive
+    container_name: fastint_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - MAIL_SERVER=mailhog
+      - MAIL_PORT=1025
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - .:/app # Mounting source code for live hot-reloading during development
+    command: [ "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+    depends_on:
+      mailhog:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: fastint_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5433:5432" # Host port: Internal container port
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  postgres_data:

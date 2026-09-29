@@ -1,0 +1,30 @@
+info:
+  name: Get current user
+  type: http
+  seq: 1
+  tags:
+    - auth
+
+http:
+  method: GET
+  url: "{{baseUrl}}/auth/me"
+  auth: inherit
+
+runtime:
+  actions:
+    - type: set-variable
+      phase: after-response
+      selector:
+        expression: req.body.access_token
+        method: jsonq
+      variable:
+        name: token
+        scope: runtime
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: Need user authentication to get current user data

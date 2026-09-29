@@ -1,0 +1,41 @@
+info:
+  name: Get all users
+  type: http
+  seq: 2
+  tags:
+    - users
+
+http:
+  method: GET
+  url: "{{baseUrl}}/users/all"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Successful Response
+    request:
+      url: "{{baseUrl}}/users/all"
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": 0,
+              "username": ""
+            }
+          ]
+
+docs: Get all list of users from database(only public accessible data)
