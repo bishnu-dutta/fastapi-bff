@@ -5,12 +5,11 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
-from sqlalchemy import select
 
-from app.auth.repository import find_by_email, find_by_username
+from app.auth.repository import find_by_email, find_by_username, find_by_userid
 from app.core.config import settings
-from app.core.context import get_current_session, org_id_context
-from app.models import User
+from app.core.context import org_id_context
+
 
 from .response import Token
 
@@ -119,11 +118,7 @@ async def get_current_auth_user(
         )   
 
     # db query need to resolve it later
-    session = get_current_session()
-    result = await session.execute(
-        select(User).where(User.id == user_id_int)
-    )
-    user = result.scalars().first()
+    user = await find_by_userid(user_id_int)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

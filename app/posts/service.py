@@ -14,7 +14,7 @@ from .request import CreatePostRequest, UpdatePostRequest
 
 
 async def create_post(data: CreatePostRequest, current_user: CurrentUser):
-    return await save_post_to_database(data, current_user.id)
+    return await save_post_to_database(data, current_user.id,current_user)
     
 
 async def get_all_posts(current_user: CurrentUser,offset,limit):

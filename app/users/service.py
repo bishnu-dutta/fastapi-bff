@@ -10,7 +10,6 @@ from app.auth.service import (
     verify_password,
     verify_reset_token,
 )
-from app.core.context import get_current_session
 from app.utils.mail import generate_otp, get_otp_expiry, mail
 
 from .repository import (
@@ -22,6 +21,8 @@ from .repository import (
     update_password_by_email,
     update_user_by_id,
     update_user_otp,
+    mark_user_verified,
+    increment_otp_attempts
 )
 from .request import CreateUserRequest, ResetPasswordRequest, UpdateUserRequest
 
@@ -63,7 +64,6 @@ async def send_otp_email(recipient_email: str, otp: str, subject: str = "Verify 
 
 async def verify_otp(email:str,otp:str):
     user = await find_user_by_email(email)
-    session = get_current_session()
     if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -84,18 +84,14 @@ async def verify_otp(email:str,otp:str):
             detail="OTP has expired. Please request a new one.",
         )
     if not user.otp_hash or not verify_password(otp, user.otp_hash):
-        user.otp_attempts += 1
-        await session.commit()
+        new_attempts = user.otp_attempts + 1
+        await increment_otp_attempts(user.id, new_attempts)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid OTP code. Remaining attempts: {5 - user.otp_attempts}",
         )
 
-    user.is_verified = True
-    user.otp_hash = None
-    user.otp_expiry = None
-    user.otp_attempts = 0
-    await session.commit()
+    await mark_user_verified(user.id)
     return {"message": "Account verified successfully. You can now log in."}
 
 async def resend_otp(email:str):

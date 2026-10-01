@@ -41,6 +41,8 @@ async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
         role=data.role, 
         organization_id=admin_user.organization_id
         )
+    user.organization = admin_user.organization
+
     await send_otp_email(user.email, p_otp)
     return user
     
@@ -84,7 +86,7 @@ async def admin_create_post_for_user(user_id: int,data: CreatePostRequest,admin_
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found in your organization"
         )
-    return await admin_save_post_for_user_to_database(data, user_id=user.id)
+    return await admin_save_post_for_user_to_database(data, user.id, user)
 
 
 async def admin_get_posts_by_id_of_user(owner_id:int,post_id:int,current_user: User):

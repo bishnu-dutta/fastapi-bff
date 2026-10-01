@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     USE_CREDENTIALS: bool=False
     VALIDATE_CERTS: bool=False
 
+    DIRECTUS_BASE_URL: str 
+    DIRECTUS_SERVER_TOKEN: str 
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

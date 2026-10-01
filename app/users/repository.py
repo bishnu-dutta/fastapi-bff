@@ -4,102 +4,144 @@ from datetime import datetime
 import uuid
 
 from pydantic import EmailStr
-from sqlalchemy import func, select
 
 from app.auth.service import hash_password
-from app.core.context import get_current_org_id, get_current_session
-from app.models import User, UserRole
+from app.core.context import get_current_org_id
+from app.models import User, UserRole, Organization
 from app.organizations.request import AdminCreateUserRequest
 from .request import CreateUserRequest, UpdateUserRequest
 
+from app.services.directus import directus_client, _to_user
+
 
 async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest, otp_hash: str, otp_expiry: datetime, role: UserRole, organization_id: uuid.UUID) -> User:
-    session = get_current_session()
-    user = User(
-        username=data.username,
-        email=data.email.lower(),
-        hashed_password=hash_password(data.password),
-        otp_hash=otp_hash,
-        otp_expiry=otp_expiry,
-        otp_attempts=0,
-        is_verified=False,
-        organization_id=organization_id,
-        role=role
-    )
-    session.add(user)
-    await session.commit()
-    await session.refresh(user, attribute_names=["organization", "posts"])
+    payload = {
+        "username":data.username,
+        "email":data.email.lower(),
+        "hashed_password":hash_password(data.password),
+        "otp_hash":otp_hash,
+        "otp_expiry":otp_expiry.isoformat() if otp_expiry else None,
+        "otp_attempts":0,
+        "is_verified":False,
+        "organization_id":str(organization_id),
+        "role":role.value if hasattr(role, "value") else str(role)
+    }
 
-    return user
+    user = await directus_client.create(
+        "users", 
+        payload,  
+        params={"fields": "*,organization_id.*"}
+    )
+    return _to_user(user)
 
     
 async def update_user_otp(user: User,otp_hash: str,otp_expiry: datetime) -> User:
-    session = get_current_session()
-    user.otp_hash = otp_hash
-    user.otp_expiry = otp_expiry
-    user.otp_attempts = 0
-    await session.commit()
-    await session.refresh(user, attribute_names=["organization", "posts"])
-    return user
+    payload = {
+        "otp_hash": otp_hash,
+        "otp_expiry": otp_expiry.isoformat() if otp_expiry else None,
+        "otp_attempts": 0,
+    }
+    updated = await directus_client.update("users", str(user.id), payload)
+    return _to_user(updated)
 
 
 async def find_user_by_email(email:EmailStr) -> User | None:
-    session = get_current_session()
-    query = select(User).where(func.lower(User.email) == email.lower())
-    result = await session.execute(query)
-    return result.scalars().first()
+    existing_mail = await directus_client.list(
+        "users"
+        , params={
+            "filter[email][_eq]": email, 
+            "limit": 1}
+        )
+    if existing_mail:
+        return _to_user(existing_mail[0])
+    return None
+
 
 
 async def all_users(offset:int,limit:int) -> list[User]:
-    session = get_current_session()
     org_id = get_current_org_id()
-    query = select(User).offset(offset).limit(limit).order_by(User.id.asc())
+    params = {
+        "limit": limit,
+        "offset": offset,
+        "sort": "id",
+        "fields": "*,organization_id.*",
+    }
     if org_id:
-        query = query.where(User.organization_id == org_id)
-    result = await session.execute(query)
-    return list(result.scalars().all())
+        params["filter[organization_id][_eq]"] = str(org_id)
+    all_users = await directus_client.list("users", params=params)
+    return [_to_user(item) for item in all_users] if all_users else []
 
-
+ 
 async def find_user_by_id(id: int) -> User | None:
-    session = get_current_session()
     org_id = get_current_org_id()
-    query = select(User).where(User.id == id)
-    if org_id:
-        query = query.where(User.organization_id == org_id)
-    result = await session.execute(query)
-    return result.scalars().first()
+    user_data = await directus_client.get_by_id(
+        "users",
+        id,
+        params= {"fields": "*,organization_id.*"},
+        )
+    if not user_data:
+        return None
+
+    user = _to_user(user_data)
+    if not user:
+        return None
+
+    if org_id and str(user.organization_id) != str(org_id):
+        return None
+    return user
 
 
 async def delete_user_by_id(id: int) -> User | None:
-    session = get_current_session()
     user = await find_user_by_id(id)
     if user:
-        await session.delete(user)
-        await session.commit()
+        await directus_client.delete(
+            "users",
+            id
+            )
     return user
 
 
 async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
-    session = get_current_session()
     user = await find_user_by_id(id)
-    if user:
-        if data.username is not None:
-            user.username = data.username
-        if data.email is not None:
-            ''' if find_user_by_email(): return email already used  '''
-            user.email = data.email.lower()
-        if data.password is not None:
-            user.hashed_password = hash_password(data.password)
-        await session.commit()
-        await session.refresh(user, attribute_names=["organization", "posts"])
+    if not user:
+        return None
+    payload = {}
+    if data.username is not None:
+        payload["username"] = data.username
+    if data.email is not None:
+        payload["email"] = data.email.lower()
+    if data.password is not None:
+        payload["hashed_password"] = hash_password(data.password)
+    if payload:
+        updated = await directus_client.update(
+            "users", 
+            str(id), 
+            payload,  
+            params={"fields": "*,organization_id.*"}
+        )
+        return _to_user(updated)
     return user
 
 async def update_password_by_email(user_mail: EmailStr, password: str) -> User | None:
-    session = get_current_session()
-    user_mail.hashed_password = hash_password(password)
-    await session.commit()
-    await session.refresh(user_mail, attribute_names=["organization", "posts"])
-    return user_mail
-
+    payload = {
+        "hashed_password": hash_password(password)
+    }
+    updated = await directus_client.update("users", str(user_mail.id), payload)
+    return _to_user(updated)
 
     
+async def mark_user_verified(user_id: int) -> User | None:
+    payload = {
+        "is_verified": True,
+        "otp_hash": None,
+        "otp_expiry": None,
+        "otp_attempts": 0,
+    }
+    updated = await directus_client.update("users", str(user_id), payload)
+    return _to_user(updated)
+
+    
+async def increment_otp_attempts(user_id: int, attempts: int) -> User | None:
+    payload = {"otp_attempts": attempts}
+    updated = await directus_client.update("users", str(user_id), payload)
+    return _to_user(updated)

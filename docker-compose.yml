@@ -1,7 +1,7 @@
 services:
   mailhog:
     image: mailhog/mailhog
-    container_name: fastint_mailhog
+    container_name: fastint_mailhog_directus
     ports:
       - "1025:1025" # SMTP
       - "8025:8025" # Web UI
@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile # check the name, can be case-sensitive
-    container_name: fastint_api
+    container_name: fastint_api_directus
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -19,6 +19,7 @@ services:
       - MAIL_SERVER=mailhog
       - MAIL_PORT=1025
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DIRECTUS_BASE_URL=${DIRECTUS_BASE_URL}
     volumes:
       - .:/app # Mounting source code for live hot-reloading during development
     command: [ "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
@@ -30,7 +31,7 @@ services:
 
   db:
     image: postgres:16-alpine
-    container_name: fastint_db
+    container_name: fastint_db_directus
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -45,5 +46,36 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  directus:
+    image: directus/directus:11
+    ports:
+      - "8055:8055"
+    env_file:
+      - .env
+    environment:
+      # Required: Used to sign JWT tokens, encrypt session cookies, and secure hashes
+      SECRET: ${SECRET_KEY}
+      # Initial admin user credentials (used on first boot)
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      # PostgreSQL connection details
+      DB_CLIENT: "pg"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_DATABASE: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Public-facing URL of the Directus instance
+      PUBLIC_URL: "http://localhost:8055"
+      WEBSOCKETS_ENABLED: "true"
+    depends_on:
+      - db
+    volumes:
+      - directus_uploads:/directus/uploads
+      - directus_extensions:/directus/extensions
+
 volumes:
   postgres_data:
+  directus_uploads:
+  directus_extensions:

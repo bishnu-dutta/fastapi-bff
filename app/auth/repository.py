@@ -1,22 +1,41 @@
-from sqlalchemy import func, select
-
-from app.core.context import get_current_session
 from app.models import User
+
+from app.services.directus import directus_client, _to_user
+
 
 
 async def find_by_username(username: str) -> User | None:
-    session = get_current_session()
-    results = await session.execute(
-        select(User).where(
-            func.lower(User.username) == func.lower(username)
+    users = await directus_client.list(
+        "users",
+        params={
+            "filter[username][_eq]": username,
+            "limit": 1,
+        }
         )
-    )
-    return results.scalars().first()
+    if users:
+        return _to_user(users[0])
+    return None
 
 
 async def find_by_email(email:str) -> User | None:
-    session = get_current_session()
-    result = await session.execute(
-        select(User).where(User.email == email)
+    user_email = await directus_client.list(
+        "users",
+        params={
+            "filter[email][_eq]": email.lower(),
+            "limit": 1,
+        }
+        )
+    if user_email:
+        return _to_user(user_email[0])
+    return None
+
+async def find_by_userid(id:int) -> User | None:
+    user_id = await directus_client.get_by_id(
+        "users",
+        id,
+        params={"fields": "*,organization_id.*"}
     )
-    return result.scalars().first()
+    if user_id:
+        return _to_user(user_id)
+    return None
+    
