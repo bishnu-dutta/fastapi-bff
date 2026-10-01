@@ -6,6 +6,7 @@ from app.auth.helpers import CurrentUser
 
 from .request import (
     CreateUserRequest,
+    UpdateUserRequest
 
 )
 from .response import MessageResponse, PrivateUserResponse, PublicUserResponse
@@ -14,6 +15,7 @@ from .service import (
     delete_user,
     get_all_users,
     get_user_by_id,
+    update_user
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -63,14 +65,14 @@ async def delete_user_api(current_user: CurrentUser):
     return await delete_user(current_user)
 
 
-# @router.put("/update", 
-#     response_model=PrivateUserResponse,
-#     status_code=status.HTTP_200_OK,
-#     summary="Update current user",
-#     description="Update current user data from database(only the current authorised user can update itself)"
-# )
-# async def update_user_api(data: UpdateUserRequest, current_user: CurrentUser):
-#     return await update_user(current_user, data)
+@router.put("/update", 
+    response_model=PrivateUserResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update current user",
+    description="Update current user data from database(only the current authorised user can update itself)"
+)
+async def update_user_api(data: UpdateUserRequest, current_user: CurrentUser):
+    return await update_user(current_user, data)
 
 
 # @router.post("/forgot-password", 

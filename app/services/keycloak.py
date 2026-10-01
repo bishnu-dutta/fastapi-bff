@@ -147,12 +147,15 @@ def update_keycloak_user(sub: str, data: dict) -> None:
     """Updates user fields in Keycloak (firstName, lastName, email, etc.)."""
     admin_token = _get_admin_token()
     kc_payload = {}
-    if "first_name" in data:
-        kc_payload["firstName"] = data["first_name"] or ""
-    if "last_name" in data:
-        kc_payload["lastName"] = data["last_name"] or ""
-    if "email" in data:
+
+    if data.get("first_name") is not None:
+        kc_payload["firstName"] = data["first_name"]
+    if data.get("last_name") is not None:
+        kc_payload["lastName"] = data["last_name"]
+    if data.get("email") is not None:
         kc_payload["email"] = data["email"]
+    if data.get("username") is not None:
+        kc_payload["username"] = data["username"]
 
     if kc_payload:
         resp = httpx.put(

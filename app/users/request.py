@@ -15,8 +15,9 @@ class CreateUserRequest(BaseModel):
 class UpdateUserRequest(BaseModel):
     username: str | None = None
     email: EmailStr | None = None
-    password: str | None = None
-
+    first_name: str | None = None
+    last_name: str | None = None
+    
 class OTPVerify(BaseModel):
     email: EmailStr
     otp: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")

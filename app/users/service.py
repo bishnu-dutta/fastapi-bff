@@ -1,3 +1,4 @@
+from app.users.request import UpdateUserRequest
 from app.models import UserRole
 from fastapi import HTTPException, status
 from fastapi_mail import MessageSchema, MessageType
@@ -10,11 +11,13 @@ from .repository import (
     find_user_by_email,
     find_user_by_id,
     save_user_to_database,
-    find_user_by_email_and_username
+    find_user_by_email_and_username,
+    update_user_by_id,
+    find_user_by_username
 )
 from .request import CreateUserRequest
 
-from app.services.keycloak import create_keycloak_user,KeycloakError, delete_keycloak_user
+from app.services.keycloak import create_keycloak_user, delete_keycloak_user, update_keycloak_user, KeycloakError
 
 
 async def create_user(data: CreateUserRequest):
@@ -78,33 +81,61 @@ async def delete_user(current_user: CurrentUser):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+    if user.keycloak_sub:
+        try:
+            delete_keycloak_user(user.keycloak_sub)
+        except KeycloakError as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)    
     return user
 
 
-# async def update_user(current_user: CurrentUser, data: UpdateUserRequest):
-#     if not current_user:
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN,
-#             detail="You are not authorized to update this user",
-#         )
-        
-#     if data.email is not None:
-#         new_email = data.email.lower()
-#         if new_email != current_user.email:
-#             existing_user = await find_user_by_email(new_email)
-#             if existing_user and existing_user.id != current_user.id:
-#                 raise HTTPException(
-#                     status_code=status.HTTP_400_BAD_REQUEST,
-#                     detail="Email is already registered with another account.",
-#                 )
+async def update_user(current_user: CurrentUser, data: UpdateUserRequest):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to update this user",
+        )
 
-#     user = await update_user_by_id(current_user.id, data)
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail="User not found",
-#         )
-#     return user
+    # email duplicate check
+    if data.email is not None:
+        new_email = data.email.lower()
+        if new_email != current_user.email:
+            existing_user = await find_user_by_email(new_email)
+            if existing_user and existing_user.id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email is already registered with another account.",
+                )
+
+    # username duplicate check
+    if data.username is not None:
+        new_username = data.username
+        if new_username != current_user.username:
+            existing_user = await find_user_by_username(new_username)
+            if existing_user and existing_user.id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username is already taken by another account.",
+                )
+
+    # update keycloak
+    if current_user.keycloak_sub:
+        try:
+            update_keycloak_user(
+                str(current_user.keycloak_sub),
+                data.model_dump(exclude_unset=True)
+            )
+        except KeycloakError as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    # update directus
+    user = await update_user_by_id(current_user.id, data)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
 
 
 # async def send_forgot_password_link(email:str):

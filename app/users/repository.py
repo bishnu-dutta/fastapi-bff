@@ -55,6 +55,19 @@ async def find_user_by_email(email:EmailStr) -> User | None:
     return None
 
 
+async def find_user_by_username(username: str) -> User | None:
+    existing_user = await directus_client.list(
+        "users",
+        params={
+            "filter[username][_eq]": username,
+            "limit": 1
+        }
+    )
+    if existing_user:
+        return _to_user(existing_user[0])
+    return None
+
+
 async def find_user_by_email_and_username(email:EmailStr, username: str) -> User | None:
     existing= await directus_client.list(
         "users"
@@ -112,26 +125,28 @@ async def delete_user_by_id(id: int) -> User | None:
     return user
 
 
-# async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
-#     user = await find_user_by_id(id)
-#     if not user:
-#         return None
-#     payload = {}
-#     if data.username is not None:
-#         payload["username"] = data.username
-#     if data.email is not None:
-#         payload["email"] = data.email.lower()
-#     if data.password is not None:
-#         payload["hashed_password"] = hash_password(data.password)
-#     if payload:
-#         updated = await directus_client.update(
-#             "users", 
-#             str(id), 
-#             payload,  
-#             params={"fields": "*,organization_id.*"}
-#         )
-#         return _to_user(updated)
-#     return user
+async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
+    user = await find_user_by_id(id)
+    if not user:
+        return None
+    payload = {}
+    if data.username is not None:
+        payload["username"] = data.username
+    if data.email is not None:
+        payload["email"] = data.email.lower()
+    if data.first_name is not None:
+        payload["first_name"] = data.first_name
+    if data.last_name is not None:
+        payload["last_name"] = data.last_name
+    if payload:
+        updated = await directus_client.update(
+            "users", 
+            str(id), 
+            payload,  
+            params={"fields": "*,organization_id.*"}
+        )
+        return _to_user(updated)
+    return user
 
 # async def update_password_by_email(user: User, password: str) -> User | None:
 #     payload = {

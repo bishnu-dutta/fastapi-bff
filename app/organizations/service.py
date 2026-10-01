@@ -14,14 +14,16 @@ from app.users.repository import (
     find_user_by_email,
     find_user_by_id,
     save_user_to_database,
-    find_user_by_email_and_username
+    find_user_by_email_and_username,
+    update_user_by_id,
+    find_user_by_username
 )
 from app.users.request import (
     UpdateUserRequest,
 )
 from .repository import admin_get_user_post_by_id_from_database
 
-from app.services.keycloak import create_keycloak_user, KeycloakError, delete_keycloak_user
+from app.services.keycloak import create_keycloak_user, KeycloakError, delete_keycloak_user, update_keycloak_user
 
 # ------ USER ------
 
@@ -53,20 +55,48 @@ async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
     return user
     
 
-# async def admin_update_user_by_id(id: int, data: UpdateUserRequest, admin_user: User):
+async def admin_update_user_by_id(id: int, data: UpdateUserRequest, admin_user: User):
 
-#     if data.email is not None:
-#         new_email = data.email.lower()
-#         existing_user = await find_user_by_email(new_email)
-#         if existing_user and existing_user.id != id:
-#             raise HTTPException(
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 detail="Email is already registered with another account.",
-#             )
-#     user = await update_user_by_id(id, data)
-#     if not user:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-#     return user
+    user = await find_user_by_id(id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in your organization")
+
+    # email duplicate check
+    if data.email is not None:
+        new_email = data.email.lower()
+        existing_user = await find_user_by_email(new_email)
+        if existing_user and existing_user.id != id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is already registered with another account.",
+            )
+
+    # username duplicate check
+    if data.username is not None:
+        new_username = data.username
+        if new_username != user.username:
+            existing_user = await find_user_by_username(new_username)
+            if existing_user and existing_user.id != user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username is already taken by another account.",
+                )
+            
+    # update keycloak
+    if user.keycloak_sub:
+        try:
+            update_keycloak_user(
+                str(user.keycloak_sub),
+                data.model_dump(exclude_unset=True)
+            )
+        except KeycloakError as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    # update directus
+    user = await update_user_by_id(id, data)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
 
 async def admin_delete_user_by_id(id: int, admin_user: User):
     if admin_user.id == id:
@@ -75,6 +105,12 @@ async def admin_delete_user_by_id(id: int, admin_user: User):
     user = await delete_user_by_id(id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in your organization")
+        
+    if user.keycloak_sub:
+        try:
+            delete_keycloak_user(user.keycloak_sub)
+        except KeycloakError as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)    
     return user
 
 
