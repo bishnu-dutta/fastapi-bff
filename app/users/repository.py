@@ -49,7 +49,7 @@ async def find_user_by_email(email:EmailStr) -> User | None:
     existing_mail = await directus_client.list(
         "users"
         , params={
-            "filter[email][_eq]": email, 
+            "filter[email][_eq]": email.lower(), 
             "limit": 1}
         )
     if existing_mail:
@@ -122,11 +122,11 @@ async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
         return _to_user(updated)
     return user
 
-async def update_password_by_email(user_mail: EmailStr, password: str) -> User | None:
+async def update_password_by_email(user: User, password: str) -> User | None:
     payload = {
         "hashed_password": hash_password(password)
     }
-    updated = await directus_client.update("users", str(user_mail.id), payload)
+    updated = await directus_client.update("users", str(user.id), payload)
     return _to_user(updated)
 
     
@@ -138,9 +138,9 @@ async def mark_user_verified(user_id: int) -> User | None:
         "otp_attempts": 0,
     }
     updated = await directus_client.update("users", str(user_id), payload)
-    return _to_user(updated)
+    return _to_user(updated)  
 
-    
+
 async def increment_otp_attempts(user_id: int, attempts: int) -> User | None:
     payload = {"otp_attempts": attempts}
     updated = await directus_client.update("users", str(user_id), payload)

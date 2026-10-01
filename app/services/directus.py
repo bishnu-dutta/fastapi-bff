@@ -54,7 +54,7 @@ class DirectusClient(BaseDataProvider):
         res = await self._request("GET", f"/items/{collection}", params=params)
         return res if res is not None else []
 
-    async def get_by_id(self, collection: str, item_id: int, params: dict = None):
+    async def get_by_id(self, collection: str, item_id: str | int, params: dict = None):
         return await self._request("GET", f"/items/{collection}/{item_id}", params=params)
 
     async def create(self, collection: str, data: dict, params: dict = None):
@@ -90,8 +90,8 @@ def _to_user(data: dict | None) -> User | None:
             org_id = None
         
         org_obj = Organization(
-            uid=org_id or uuid.uuid4(),
-            name=raw_org.get("name", "")
+            uid=org_id,
+            name=raw_org.get("name")
         )
     elif isinstance(raw_org, str):
         try:

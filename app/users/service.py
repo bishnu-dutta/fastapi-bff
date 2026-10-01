@@ -217,15 +217,15 @@ async def reset_password_with_token(token:str, passwords:ResetPasswordRequest):
             detail="Invalid or expired token",
         )
 
-    user_mail = await find_user_by_email(mail_ID)
+    user = await find_user_by_email(mail_ID)
     
-    if not user_mail:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Mail not found",
         )
     
-    if not user_mail.is_verified:
+    if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account is not verified",
@@ -239,6 +239,6 @@ async def reset_password_with_token(token:str, passwords:ResetPasswordRequest):
             detail="Passwords do not match", status_code=status.HTTP_400_BAD_REQUEST
         )
         
-    await update_password_by_email(user_mail, new_password)
+    await update_password_by_email(user, new_password)
 
     return {"message" : "Password reset successfully"}

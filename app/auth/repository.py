@@ -10,6 +10,8 @@ async def find_by_username(username: str) -> User | None:
         params={
             "filter[username][_eq]": username,
             "limit": 1,
+            "fields": "*,organization_id.*"
+
         }
         )
     if users:
@@ -23,6 +25,7 @@ async def find_by_email(email:str) -> User | None:
         params={
             "filter[email][_eq]": email.lower(),
             "limit": 1,
+            "fields": "*,organization_id.*"
         }
         )
     if user_email:
