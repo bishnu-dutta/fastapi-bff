@@ -21,12 +21,15 @@ class User:
     id: int 
     username: str 
     email: str 
-    hashed_password: str
+    first_name: str
+    last_name: str
+    keycloak_sub: uuid.UUID
     organization_id: uuid.UUID 
     is_verified: bool = False
-    otp_hash: str | None = None
-    otp_expiry: datetime | None = None
-    otp_attempts: int = 0
+    # hashed_password: str
+    # otp_hash: str | None = None
+    # otp_expiry: datetime | None = None
+    # otp_attempts: int = 0
     organization: Organization | None = None
     role: UserRole | str = UserRole.USER
     posts: list["Post"] = field(default_factory=list)

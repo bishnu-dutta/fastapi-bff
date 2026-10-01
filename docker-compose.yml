@@ -75,7 +75,40 @@ services:
       - directus_uploads:/directus/uploads
       - directus_extensions:/directus/extensions
 
+  keycloak-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_password
+      POSTGRES_DB: keycloak
+    ports:
+      - "5435:5432" # exposing it just to view how the entire kc-db setup
+    volumes:
+      - keycloak_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   directus_uploads:
   directus_extensions:
+  keycloak_pgdata:

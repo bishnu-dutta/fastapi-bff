@@ -1,4 +1,3 @@
-from app.utils.mail import generate_otp, get_otp_expiry
 from fastapi import HTTPException, status
 
 from app.models import User
@@ -14,53 +13,60 @@ from app.users.repository import (
     delete_user_by_id,
     find_user_by_email,
     find_user_by_id,
-    update_user_by_id,
-    save_user_to_database
+    save_user_to_database,
+    find_user_by_email_and_username
 )
 from app.users.request import (
     UpdateUserRequest,
 )
-from app.users.service import send_otp_email
-
 from .repository import admin_get_user_post_by_id_from_database
+
+from app.services.keycloak import create_keycloak_user, KeycloakError, delete_keycloak_user
 
 # ------ USER ------
 
 async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
-    existing_user = await find_user_by_email(data.email)
+    existing_user = await find_user_by_email_and_username(data.email, data.username)
     if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
-        detail="User already exists"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this email or username already exists",
         )
-    p_otp, h_otp = generate_otp()
-    otp_expiry = get_otp_expiry(minutes=10)
-    user = await save_user_to_database(
-        data, 
-        h_otp, 
-        otp_expiry, 
-        role=data.role, 
-        organization_id=admin_user.organization_id
-        )
-    user.organization = admin_user.organization
+    try:
+        keycloak_sub = create_keycloak_user(data, admin_user.organization_id, data.role)
+    except KeycloakError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
-    await send_otp_email(user.email, p_otp)
+    try:
+        user = await save_user_to_database(
+            data,
+            keycloak_sub,
+            organization_id=admin_user.organization_id,
+            role=data.role,
+        )
+    except Exception as e:
+        delete_keycloak_user(keycloak_sub)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save user in database: {e}",
+        )
     return user
     
 
-async def admin_update_user_by_id(id: int, data: UpdateUserRequest, admin_user: User):
+# async def admin_update_user_by_id(id: int, data: UpdateUserRequest, admin_user: User):
 
-    if data.email is not None:
-        new_email = data.email.lower()
-        existing_user = await find_user_by_email(new_email)
-        if existing_user and existing_user.id != id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email is already registered with another account.",
-            )
-    user = await update_user_by_id(id, data)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+#     if data.email is not None:
+#         new_email = data.email.lower()
+#         existing_user = await find_user_by_email(new_email)
+#         if existing_user and existing_user.id != id:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Email is already registered with another account.",
+#             )
+#     user = await update_user_by_id(id, data)
+#     if not user:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+#     return user
 
 async def admin_delete_user_by_id(id: int, admin_user: User):
     if admin_user.id == id:

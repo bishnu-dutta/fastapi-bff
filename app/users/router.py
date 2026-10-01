@@ -3,15 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from app.auth.helpers import CurrentUser
-from app.users.service import resend_otp, verify_otp
 
 from .request import (
     CreateUserRequest,
-    ForgotPasswordRequest,
-    OTPVerify,
-    ResendOTPRequest,
-    ResetPasswordRequest,
-    UpdateUserRequest,
+
 )
 from .response import MessageResponse, PrivateUserResponse, PublicUserResponse
 from .service import (
@@ -19,9 +14,6 @@ from .service import (
     delete_user,
     get_all_users,
     get_user_by_id,
-    reset_password_with_token,
-    send_forgot_password_link,
-    update_user,
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -35,23 +27,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 )
 async def create_user_api(data: CreateUserRequest):
     return await create_user(data)
-
-@router.post("/mail/verify-otp", 
-    response_model=MessageResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Verify OTP",
-    description="Verify OTP of a user"
-)
-async def verify_otp_api(data: OTPVerify):
-    return await verify_otp(data.email, data.otp)
-
-@router.post("/mail/resend-otp", 
-    response_model=MessageResponse,
-    status_code=status.HTTP_200_OK, 
-    summary="Resend verification OTP",
-    description="Resends a new 6-digit OTP to the user's email if not already verified.")
-async def resend_otp_api(data: ResendOTPRequest):
-    return await resend_otp(data.email)
 
 
 @router.get("/all", 
@@ -88,30 +63,30 @@ async def delete_user_api(current_user: CurrentUser):
     return await delete_user(current_user)
 
 
-@router.put("/update", 
-    response_model=PrivateUserResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Update current user",
-    description="Update current user data from database(only the current authorised user can update itself)"
-)
-async def update_user_api(data: UpdateUserRequest, current_user: CurrentUser):
-    return await update_user(current_user, data)
+# @router.put("/update", 
+#     response_model=PrivateUserResponse,
+#     status_code=status.HTTP_200_OK,
+#     summary="Update current user",
+#     description="Update current user data from database(only the current authorised user can update itself)"
+# )
+# async def update_user_api(data: UpdateUserRequest, current_user: CurrentUser):
+#     return await update_user(current_user, data)
 
 
-@router.post("/forgot-password", 
-    response_model=MessageResponse, 
-    status_code=status.HTTP_200_OK, 
-    summary="request password reset", 
-    description="Forgot password of a user, sends a password reset link to the user's email if verified"
-)
-async def forgot_password_api(data: ForgotPasswordRequest):
-    return await send_forgot_password_link(data.email)
+# @router.post("/forgot-password", 
+#     response_model=MessageResponse, 
+#     status_code=status.HTTP_200_OK, 
+#     summary="request password reset", 
+#     description="Forgot password of a user, sends a password reset link to the user's email if verified"
+# )
+# async def forgot_password_api(data: ForgotPasswordRequest):
+#     return await send_forgot_password_link(data.email)
 
 
-@router.post("/reset-password/{token}",
-    response_model=MessageResponse,
-    status_code=status.HTTP_200_OK,summary="Reset password",
-    description="Reset password of a user if the user is verified and token is valid"
-)
-async def reset_password_api(token:str, data: ResetPasswordRequest):
-    return await reset_password_with_token(token, data)
+# @router.post("/reset-password/{token}",
+#     response_model=MessageResponse,
+#     status_code=status.HTTP_200_OK,summary="Reset password",
+#     description="Reset password of a user if the user is verified and token is valid"
+# )
+# async def reset_password_api(token:str, data: ResetPasswordRequest):
+#     return await reset_password_with_token(token, data)

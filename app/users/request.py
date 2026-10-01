@@ -7,6 +7,8 @@ class CreateUserRequest(BaseModel):
     username: str
     email: EmailStr
     password: str 
+    first_name: str
+    last_name: str
     organization_id: uuid.UUID
 
 

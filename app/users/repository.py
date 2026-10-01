@@ -5,7 +5,6 @@ import uuid
 
 from pydantic import EmailStr
 
-from app.auth.service import hash_password
 from app.core.context import get_current_org_id
 from app.models import User, UserRole, Organization
 from app.organizations.request import AdminCreateUserRequest
@@ -14,17 +13,16 @@ from .request import CreateUserRequest, UpdateUserRequest
 from app.services.directus import directus_client, _to_user
 
 
-async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest, otp_hash: str, otp_expiry: datetime, role: UserRole, organization_id: uuid.UUID) -> User:
+async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest, keycloak_sub:uuid.UUID ,role: UserRole, organization_id: uuid.UUID) -> User:
     payload = {
         "username":data.username,
         "email":data.email.lower(),
-        "hashed_password":hash_password(data.password),
-        "otp_hash":otp_hash,
-        "otp_expiry":otp_expiry.isoformat() if otp_expiry else None,
-        "otp_attempts":0,
         "is_verified":False,
         "organization_id":str(organization_id),
-        "role":role.value if hasattr(role, "value") else str(role)
+        "role":role.value if hasattr(role, "value") else str(role),
+        "keycloak_sub": keycloak_sub,
+        "first_name": data.first_name,
+        "last_name": data.last_name
     }
 
     user = await directus_client.create(
@@ -54,6 +52,19 @@ async def find_user_by_email(email:EmailStr) -> User | None:
         )
     if existing_mail:
         return _to_user(existing_mail[0])
+    return None
+
+
+async def find_user_by_email_and_username(email:EmailStr, username: str) -> User | None:
+    existing= await directus_client.list(
+        "users"
+        , params={
+            "filter[_or][0][email][_eq]": email.lower(), 
+            "filter[_or][1][username][_eq]": username.lower(),
+            "limit": 1}
+        )
+    if existing:
+        return _to_user(existing[0])
     return None
 
 
@@ -101,47 +112,47 @@ async def delete_user_by_id(id: int) -> User | None:
     return user
 
 
-async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
-    user = await find_user_by_id(id)
-    if not user:
-        return None
-    payload = {}
-    if data.username is not None:
-        payload["username"] = data.username
-    if data.email is not None:
-        payload["email"] = data.email.lower()
-    if data.password is not None:
-        payload["hashed_password"] = hash_password(data.password)
-    if payload:
-        updated = await directus_client.update(
-            "users", 
-            str(id), 
-            payload,  
-            params={"fields": "*,organization_id.*"}
-        )
-        return _to_user(updated)
-    return user
+# async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
+#     user = await find_user_by_id(id)
+#     if not user:
+#         return None
+#     payload = {}
+#     if data.username is not None:
+#         payload["username"] = data.username
+#     if data.email is not None:
+#         payload["email"] = data.email.lower()
+#     if data.password is not None:
+#         payload["hashed_password"] = hash_password(data.password)
+#     if payload:
+#         updated = await directus_client.update(
+#             "users", 
+#             str(id), 
+#             payload,  
+#             params={"fields": "*,organization_id.*"}
+#         )
+#         return _to_user(updated)
+#     return user
 
-async def update_password_by_email(user: User, password: str) -> User | None:
-    payload = {
-        "hashed_password": hash_password(password)
-    }
-    updated = await directus_client.update("users", str(user.id), payload)
-    return _to_user(updated)
+# async def update_password_by_email(user: User, password: str) -> User | None:
+#     payload = {
+#         "hashed_password": hash_password(password)
+#     }
+#     updated = await directus_client.update("users", str(user.id), payload)
+#     return _to_user(updated)
 
     
-async def mark_user_verified(user_id: int) -> User | None:
-    payload = {
-        "is_verified": True,
-        "otp_hash": None,
-        "otp_expiry": None,
-        "otp_attempts": 0,
-    }
-    updated = await directus_client.update("users", str(user_id), payload)
-    return _to_user(updated)  
+# async def mark_user_verified(user_id: int) -> User | None:
+#     payload = {
+#         "is_verified": True,
+#         "otp_hash": None,
+#         "otp_expiry": None,
+#         "otp_attempts": 0,
+#     }
+#     updated = await directus_client.update("users", str(user_id), payload)
+#     return _to_user(updated)  
 
 
-async def increment_otp_attempts(user_id: int, attempts: int) -> User | None:
-    payload = {"otp_attempts": attempts}
-    updated = await directus_client.update("users", str(user_id), payload)
-    return _to_user(updated)
+# async def increment_otp_attempts(user_id: int, attempts: int) -> User | None:
+#     payload = {"otp_attempts": attempts}
+#     updated = await directus_client.update("users", str(user_id), payload)
+#     return _to_user(updated)

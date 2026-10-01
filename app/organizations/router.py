@@ -20,7 +20,6 @@ from .service import (
     admin_get_all_posts_of_user,
     admin_get_posts_by_id_of_user,
     admin_update_post_by_id_of_user,
-    admin_update_user_by_id,
 )
 
 router = APIRouter(prefix="/admin", tags=["organizations"], dependencies=[admin])
@@ -67,18 +66,18 @@ async def admin_get_user_by_id_api(
 ):
     return await get_user_by_id(id, current_user)
 
-@router.put("/{id}",
-            response_model=PrivateUserResponse,
-            status_code=status.HTTP_200_OK,
-            summary="Update a user by id",
-            description="Update a user by id of current organization from database(only admin accessible data)"
-)
-async def admin_update_user_api(
-    id: int,
-    data: UpdateUserRequest,
-    current_user: User = admin,
-):
-    return await admin_update_user_by_id(id, data, current_user)
+# @router.put("/{id}",
+#             response_model=PrivateUserResponse,
+#             status_code=status.HTTP_200_OK,
+#             summary="Update a user by id",
+#             description="Update a user by id of current organization from database(only admin accessible data)"
+# )
+# async def admin_update_user_api(
+#     id: int,
+#     data: UpdateUserRequest,
+#     current_user: User = admin,
+# ):
+#     return await admin_update_user_by_id(id, data, current_user)
 
 @router.delete("/{id}", 
             response_model=PrivateUserResponse,

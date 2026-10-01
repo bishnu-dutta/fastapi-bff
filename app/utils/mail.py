@@ -1,9 +1,6 @@
-import secrets
-from datetime import UTC, datetime, timedelta
-
 from fastapi_mail import ConnectionConfig, FastMail
 
-from app.auth.service import hash_password
+# from app.auth.service import hash_password
 from app.core.config import settings
 
 mail_config = ConnectionConfig(
@@ -21,14 +18,14 @@ mail_config = ConnectionConfig(
 mail = FastMail(mail_config)
 
 
-def generate_otp() -> tuple[str, str]:
-    otp = f"{secrets.randbelow(1_000_000):06d}"
-    hashed_otp = hash_password(otp)
-    return otp, hashed_otp
+# def generate_otp() -> tuple[str, str]:
+#     otp = f"{secrets.randbelow(1_000_000):06d}"
+#     hashed_otp = hash_password(otp)
+#     return otp, hashed_otp
 
 
-def get_otp_expiry(minutes: int = 10) -> datetime:
-    return datetime.now(UTC) + timedelta(minutes=minutes)
+# def get_otp_expiry(minutes: int = 10) -> datetime:
+#     return datetime.now(UTC) + timedelta(minutes=minutes)
 
 
     
