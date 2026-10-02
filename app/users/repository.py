@@ -1,6 +1,4 @@
 
-from datetime import datetime
-
 import uuid
 
 from pydantic import EmailStr
@@ -33,14 +31,14 @@ async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest
     return _to_user(user)
 
     
-async def update_user_otp(user: User,otp_hash: str,otp_expiry: datetime) -> User:
-    payload = {
-        "otp_hash": otp_hash,
-        "otp_expiry": otp_expiry.isoformat() if otp_expiry else None,
-        "otp_attempts": 0,
-    }
-    updated = await directus_client.update("users", str(user.id), payload)
-    return _to_user(updated)
+# async def update_user_otp(user: User,otp_hash: str,otp_expiry: datetime) -> User:
+#     payload = {
+#         "otp_hash": otp_hash,
+#         "otp_expiry": otp_expiry.isoformat() if otp_expiry else None,
+#         "otp_attempts": 0,
+#     }
+#     updated = await directus_client.update("users", str(user.id), payload)
+#     return _to_user(updated)
 
 
 async def find_user_by_email(email:EmailStr) -> User | None:
