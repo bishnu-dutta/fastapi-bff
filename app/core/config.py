@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     TOKEN_AUDIENCE:str
     KEYCLOAK_SERVER_URL:str
     KEYCLOAK_REALM:str
+    KC_HOSTNAME:str
 
     model_config = SettingsConfigDict(
         env_file=".env",

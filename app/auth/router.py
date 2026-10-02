@@ -10,7 +10,7 @@ from .response import TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/token", response_model=TokenResponse)
+@router.post("/token", response_model=TokenResponse, include_in_schema=False)
 async def login_for_access_token(
     # OAuth2PasswordRequstForm -> parses login form data and requires username.
     # oauth2_scheme use this POST /token to return token value from token model

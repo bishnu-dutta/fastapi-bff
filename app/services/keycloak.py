@@ -253,7 +253,8 @@ def decode_access_token(token: str) -> dict:
             algorithms=["RS256"],
             audience=settings.TOKEN_AUDIENCE,
             issuer=REALM_BASE,
-            options={"verify_aud": bool(settings.TOKEN_AUDIENCE)},
+            # DNS Issue fixing verify_iss
+            options={"verify_aud": bool(settings.TOKEN_AUDIENCE), "verify_iss": False},
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expired")

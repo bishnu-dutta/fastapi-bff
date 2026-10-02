@@ -42,8 +42,8 @@ async def create_user(data: CreateUserRequest):
     except Exception as e:
         delete_keycloak_user(keycloak_sub)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save user in database: {e}",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Organization '{data.organization_id}' not found",
         )
     return user
 
