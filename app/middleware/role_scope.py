@@ -1,9 +1,8 @@
-from app.auth.service import get_current_claims
-from collections.abc import Sequence
 
 from fastapi import Depends, HTTPException, status
 
 from app.auth.helpers import CurrentUser
+from app.auth.service import get_current_claims
 from app.models import User, UserRole
 
 

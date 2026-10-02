@@ -1,19 +1,13 @@
 
-from app.services.keycloak import KeycloakError
-from app.models import User
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from app.auth.repository import find_by_keycloak_sub
 from app.core.context import org_id_context
-
-from app.services.keycloak import login_user
-
+from app.models import User
+from app.services.keycloak import KeycloakError, decode_access_token, login_user
 
 from .response import TokenResponse
-
-from app.services.keycloak import decode_access_token
 
 # tokenUrl is used by OpenAPI's "Authorize" button to obtain tokens
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=True)

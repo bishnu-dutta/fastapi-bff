@@ -1,13 +1,11 @@
-from app.users.repository import find_user_by_id
 from datetime import UTC, datetime
 
 from app.core.context import get_current_org_id
 from app.models import Post, User
+from app.services.directus import _to_post, directus_client
+from app.users.repository import find_user_by_id
 
 from .request import CreatePostRequest, UpdatePostRequest
-
-from app.services.directus import directus_client, _to_post
-
 
 
 async def save_post_to_database(data: CreatePostRequest, current_user_id: int, current_user: User):

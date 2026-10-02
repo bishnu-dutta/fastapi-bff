@@ -1,8 +1,7 @@
 import uuid
+
 from app.models import User
-
-from app.services.directus import directus_client, _to_user
-
+from app.services.directus import _to_user, directus_client
 
 
 async def find_by_username(username: str) -> User | None:

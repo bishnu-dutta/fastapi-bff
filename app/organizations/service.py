@@ -9,21 +9,26 @@ from app.organizations.repository import (
 from app.organizations.request import AdminCreateUserRequest
 from app.posts.repository import get_all_post_by_user_id_from_database
 from app.posts.request import CreatePostRequest, UpdatePostRequest
+from app.services.keycloak import (
+    KeycloakError,
+    create_keycloak_user,
+    delete_keycloak_user,
+    update_keycloak_user,
+)
 from app.users.repository import (
     delete_user_by_id,
     find_user_by_email,
-    find_user_by_id,
-    save_user_to_database,
     find_user_by_email_and_username,
+    find_user_by_id,
+    find_user_by_username,
+    save_user_to_database,
     update_user_by_id,
-    find_user_by_username
 )
 from app.users.request import (
     UpdateUserRequest,
 )
-from .repository import admin_get_user_post_by_id_from_database
 
-from app.services.keycloak import create_keycloak_user, KeycloakError, delete_keycloak_user, update_keycloak_user
+from .repository import admin_get_user_post_by_id_from_database
 
 # ------ USER ------
 
@@ -46,7 +51,8 @@ async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
             organization_id=admin_user.organization_id,
             role=data.role,
         )
-    except Exception as e:
+    # blind exception, fix later
+    except Exception as e:  # noqa: BLE001
         delete_keycloak_user(keycloak_sub)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

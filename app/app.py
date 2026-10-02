@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 import app.models
 from app.auth.router import router as auth_router
+
 # from app.core.database import async_engine, async_session_dep
 from app.core.exceptions import register_exception_handlers
 from app.middleware import register_middleware

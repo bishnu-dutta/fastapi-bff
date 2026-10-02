@@ -3,6 +3,7 @@ import uuid
 
 from pydantic import BaseModel, EmailStr, Field
 
+
 class CreateUserRequest(BaseModel):
     username: str
     email: EmailStr

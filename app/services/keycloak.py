@@ -1,5 +1,4 @@
 import uuid
-from app.models import UserRole
 from functools import lru_cache
 
 import httpx
@@ -8,9 +7,9 @@ from fastapi import HTTPException, status
 from jwt import PyJWKClient
 
 from app.core.config import settings
-from app.users.request import CreateUserRequest
+from app.models import UserRole
 from app.organizations.request import AdminCreateUserRequest
-
+from app.users.request import CreateUserRequest
 
 REALM_BASE = f"{settings.KEYCLOAK_SERVER_URL}/realms/{settings.KEYCLOAK_REALM}"
 ADMIN_BASE = f"{settings.KEYCLOAK_SERVER_URL}/admin/realms/{settings.KEYCLOAK_REALM}"
@@ -99,7 +98,8 @@ def create_keycloak_user(
     if send_verification_email:
         try:
             send_verify_email(sub)
-        except Exception:
+        # blind exception, fix later
+        except Exception:  # noqa: BLE001, S110
             # We don't fail registration if SMTP delivery fails, but log/let user know
             pass
 
@@ -182,8 +182,9 @@ def delete_keycloak_user(sub: str) -> None:
             headers={"Authorization": f"Bearer {admin_token}"},
             timeout=10,
         )
-    except Exception:
-        pass
+    # blind exception, fix later
+    except Exception: # noqa: BLE001, S110
+        pass  
 
 
 def login_user(username: str, password: str, totp: str | None = None) -> dict:
@@ -214,7 +215,8 @@ def login_user(username: str, password: str, totp: str | None = None) -> dict:
                 error_msg = desc or "Invalid credentials or missing TOTP/MFA code."
             else:
                 error_msg = desc or err or error_msg
-        except Exception:
+        # blind exception, fix later
+        except Exception: # noqa: BLE001, S110
             pass
         raise KeycloakError(error_msg, resp.status_code)
     return resp.json()

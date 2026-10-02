@@ -1,8 +1,8 @@
 import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from dataclasses import dataclass, field
 
 class UserRole(StrEnum):
     SUPER_ADMIN = "super_admin"
@@ -13,7 +13,7 @@ class UserRole(StrEnum):
 class Organization:
     name: str 
     uid: uuid.UUID = field(default_factory=uuid.uuid4)
-    user_org: list["User"] = field(default_factory=list)
+    user_org: list[User] = field(default_factory=list)
 
 
 @dataclass
@@ -32,12 +32,12 @@ class User:
     # otp_attempts: int = 0
     organization: Organization | None = None
     role: UserRole | str = UserRole.USER
-    posts: list["Post"] = field(default_factory=list)
+    posts: list[Post] = field(default_factory=list)
     @property
     def organization_name(self) -> str | None:
         return self.organization.name if self.organization else None
     @property
-    def all_posts(self) -> list["Post"]:
+    def all_posts(self) -> list[Post]:
         return self.posts
 
 @dataclass

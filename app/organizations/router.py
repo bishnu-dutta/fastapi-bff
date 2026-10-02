@@ -20,7 +20,7 @@ from .service import (
     admin_get_all_posts_of_user,
     admin_get_posts_by_id_of_user,
     admin_update_post_by_id_of_user,
-    admin_update_user_by_id
+    admin_update_user_by_id,
 )
 
 router = APIRouter(prefix="/admin", tags=["organizations"], dependencies=[admin])

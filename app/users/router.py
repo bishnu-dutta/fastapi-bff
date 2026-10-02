@@ -4,18 +4,14 @@ from fastapi import APIRouter, Query, status
 
 from app.auth.helpers import CurrentUser
 
-from .request import (
-    CreateUserRequest,
-    UpdateUserRequest
-
-)
-from .response import MessageResponse, PrivateUserResponse, PublicUserResponse
+from .request import CreateUserRequest, UpdateUserRequest
+from .response import PrivateUserResponse, PublicUserResponse
 from .service import (
     create_user,
     delete_user,
     get_all_users,
     get_user_by_id,
-    update_user
+    update_user,
 )
 
 router = APIRouter(prefix="/users", tags=["users"])

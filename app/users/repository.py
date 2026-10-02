@@ -4,11 +4,11 @@ import uuid
 from pydantic import EmailStr
 
 from app.core.context import get_current_org_id
-from app.models import User, UserRole, Organization
+from app.models import User, UserRole
 from app.organizations.request import AdminCreateUserRequest
-from .request import CreateUserRequest, UpdateUserRequest
+from app.services.directus import _to_user, directus_client
 
-from app.services.directus import directus_client, _to_user
+from .request import CreateUserRequest, UpdateUserRequest
 
 
 async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest, keycloak_sub:uuid.UUID ,role: UserRole, organization_id: uuid.UUID) -> User:

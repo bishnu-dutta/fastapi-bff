@@ -1,9 +1,8 @@
-from app.auth.service import keycloak_login_user
-from fastapi import HTTPException
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.auth.helpers import CurrentUser
+from app.auth.service import keycloak_login_user
 from app.users.response import PrivateUserResponse
 
 from .response import TokenResponse
