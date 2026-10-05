@@ -1,20 +1,35 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class PublicPostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: int
-    title: str
-    content: str
-    user_id : int
-    created_at: datetime 
+    id: int = Field(
+        description="Unique identifier for the post.(auto-incrementing)"
+        )
+    title: str = Field(
+        description="Title of the post"
+        )
+    content: str = Field(
+        description="Content of the post"
+        )
+    user_id : int = Field(
+        description="Unique identifier for the user who created the post"
+        )
+    created_at: datetime = Field(
+        description="Timestamp (UTC) when the post was created"
+        ) 
 
 class PrivatePostResponse(PublicPostResponse):
     model_config = ConfigDict(from_attributes=True)
-    author: EmailStr
+    author: EmailStr = Field(
+        description="Email of post's author"
+        )
 
 class UpdatePrivatePostResponse(PrivatePostResponse):
-    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+    updated_at: datetime = Field(
+        description="Timestamp (UTC) when the post was last modified"
+        )
     
