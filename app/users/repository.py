@@ -1,4 +1,5 @@
 
+from datetime import datetime, UTC
 import uuid
 
 from pydantic import EmailStr
@@ -20,7 +21,10 @@ async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest
         "role":role.value if hasattr(role, "value") else str(role),
         "keycloak_sub": keycloak_sub,
         "first_name": data.first_name,
-        "last_name": data.last_name
+        "last_name": data.last_name,
+        "created_at": datetime.now(UTC).isoformat(),
+        "is_active": True,
+        "trashed_at": None,
     }
 
     user = await directus_client.create(
@@ -46,7 +50,11 @@ async def find_user_by_email(email:EmailStr) -> User | None:
         "users"
         , params={
             "filter[email][_eq]": email.lower(), 
-            "limit": 1}
+            "limit": 1,
+            # check if trashed_at is not null and is_active is true
+            "filter[trashed_at][_null]": True,
+            "filter[is_active][_eq]":True,
+            }
         )
     if existing_mail:
         return _to_user(existing_mail[0])
@@ -58,7 +66,10 @@ async def find_user_by_username(username: str) -> User | None:
         "users",
         params={
             "filter[username][_eq]": username,
-            "limit": 1
+            "limit": 1,
+            # check if trashed_at is not null and is_active is true
+            "filter[trashed_at][_null]": True,
+            "filter[is_active][_eq]":True,
         }
     )
     if existing_user:
@@ -72,7 +83,11 @@ async def find_user_by_email_and_username(email:EmailStr, username: str) -> User
         , params={
             "filter[_or][0][email][_eq]": email.lower(), 
             "filter[_or][1][username][_eq]": username.lower(),
-            "limit": 1}
+            "limit": 1,
+            # check if trashed_at is not null and is_active is true
+            "filter[trashed_at][_null]": True,
+            "filter[is_active][_eq]":True,
+            }
         )
     if existing:
         return _to_user(existing[0])
@@ -87,6 +102,9 @@ async def all_users(offset:int,limit:int) -> list[User]:
         "offset": offset,
         "sort": "id",
         "fields": "*,organization_id.*",
+        # check if trashed_at is not null and is_active is true
+        "filter[trashed_at][_null]": True,
+        "filter[is_active][_eq]":True,
     }
     if org_id:
         params["filter[organization_id][_eq]"] = str(org_id)
@@ -100,8 +118,12 @@ async def find_user_by_id(id: int) -> User | None:
         "users",
         id,
         params= {"fields": "*,organization_id.*"},
-        )
+    )
     if not user_data:
+        return None
+
+    # If the user is trashed or inactive, treat as NOT FOUND (404)
+    if user_data.get("trashed_at") is not None or user_data.get("is_active") is False:
         return None
 
     user = _to_user(user_data)
@@ -115,12 +137,16 @@ async def find_user_by_id(id: int) -> User | None:
 
 async def delete_user_by_id(id: int) -> User | None:
     user = await find_user_by_id(id)
-    if user:
-        await directus_client.delete(
-            "users",
-            id
-            )
-    return user
+    if not user:
+        return None
+
+    # We are passing these payload to update the user. Instead of deleting it, is_active is turned False.
+    payload = {
+        "trashed_at": datetime.now(UTC).isoformat(),
+        "is_active":False
+    }
+    updated = await directus_client.update("users", str(id), payload)
+    return _to_user(updated)
 
 
 async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
@@ -137,6 +163,9 @@ async def update_user_by_id(id: int, data: UpdateUserRequest) -> User | None:
     if data.last_name is not None:
         payload["last_name"] = data.last_name
     if payload:
+        # recording updated time
+        payload["updated_at"] = datetime.now(UTC).isoformat()
+        
         updated = await directus_client.update(
             "users", 
             str(id), 

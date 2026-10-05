@@ -1,6 +1,5 @@
-import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 import httpx
 from fastapi import HTTPException, status
@@ -10,8 +9,19 @@ from app.models import Organization, Post, User, UserRole
 
 from .provider import BaseDataProvider
 
+import logging
+
 logger = logging.getLogger(__name__)
 
+
+def _parse_datetime(val: str | None) -> datetime | None:
+    """Helper to safely parse an ISO datetime string."""
+    if isinstance(val, str):
+        try:
+            return datetime.fromisoformat(val)
+        except (ValueError, TypeError) as exc:
+            logger.warning("Failed to parse datetime '%s': %s", val, exc)
+    return None
 
 class DirectusClient(BaseDataProvider):
     def __init__(self):
@@ -123,6 +133,10 @@ def _to_user(data: dict | None) -> User | None:
         role=data.get("role", UserRole.USER),
         organization_id=org_id,
         organization=org_obj,  # <-- Attaches the Organization object!
+        is_active=data.get("is_active", True),
+        created_at=_parse_datetime(data.get("created_at")) or datetime.now(UTC),
+        updated_at=_parse_datetime(data.get("updated_at")),
+        trashed_at=_parse_datetime(data.get("trashed_at")),
     )
 
 
@@ -130,21 +144,6 @@ def _to_user(data: dict | None) -> User | None:
 def _to_post(data: dict | None, owner: User | None = None) -> Post | None:
     if not data:
         return None
-    created_at = data.get("created_at")
-    if isinstance(created_at, str):
-        try:
-            created_at = datetime.fromisoformat(created_at)
-        # blind exception, fixed
-        except (ValueError, TypeError) as exc:
-            logger.warning("Failed to parse created_at timestamp '%s': %s", created_at, exc)
-            
-    updated_at = data.get("updated_at")
-    if isinstance(updated_at, str):
-        try:
-            updated_at = datetime.fromisoformat(updated_at)
-        # blind exception, fixed
-        except (ValueError, TypeError) as exc:
-            logger.warning("Failed to parse updated_at timestamp '%s': %s", updated_at, exc)
     
     raw_user = data.get("user_id")
     if isinstance(raw_user, dict):
@@ -159,8 +158,10 @@ def _to_post(data: dict | None, owner: User | None = None) -> Post | None:
         title=data.get("title"),
         content=data.get("content"),
         user_id=user_id,
-        created_at=created_at,
-        updated_at=updated_at,
+        is_active=data.get("is_active", True),
+        created_at=_parse_datetime(data.get("created_at")) or datetime.now(UTC),
+        updated_at=_parse_datetime(data.get("updated_at")),
+        trashed_at=_parse_datetime(data.get("trashed_at")),
     )
     if owner:
         post.owner_id = owner

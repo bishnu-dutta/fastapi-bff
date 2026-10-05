@@ -1,3 +1,4 @@
+from app.services.directus import logger
 from fastapi import HTTPException, status
 
 from app.models import User
@@ -52,7 +53,8 @@ async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
             role=data.role,
         )
     # blind exception, fix later
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
+        logger.exception("Compensating action failed: could not delete orphaned Keycloak user %s", e)  
         delete_keycloak_user(keycloak_sub)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

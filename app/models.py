@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 
 
@@ -9,15 +9,22 @@ class UserRole(StrEnum):
     ORG_ADMIN = "org_admin"
     USER = "user"
 
-@dataclass
-class Organization:
+@dataclass(kw_only=True)
+class BaseMixin:
+    is_active: bool = True
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime | None = None
+    trashed_at: datetime | None = None
+
+@dataclass(kw_only=True)
+class Organization(BaseMixin):
     name: str 
     uid: uuid.UUID = field(default_factory=uuid.uuid4)
     user_org: list["User"] = field(default_factory=list)
 
 
-@dataclass
-class User:
+@dataclass(kw_only=True)
+class User(BaseMixin):
     id: int 
     username: str 
     email: str 
@@ -40,15 +47,13 @@ class User:
     def all_posts(self) -> list["Post"]:
         return self.posts
 
-@dataclass
-class Post:
+@dataclass(kw_only=True)
+class Post(BaseMixin):
     id: int 
     title: str 
     content: str 
     user_id: int 
-    created_at: datetime 
     owner_id: User | None = None
-    updated_at: datetime | None = None
     @property
     def author(self) -> str | None:
         return self.owner_id.email if self.owner_id else None

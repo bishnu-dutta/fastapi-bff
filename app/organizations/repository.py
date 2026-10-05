@@ -13,7 +13,10 @@ async def admin_save_post_for_user_to_database(data: CreatePostRequest, user_id:
         "user_id":user_id,
         "title":data.title,
         "content":data.content,
+
         "created_at": datetime.now(UTC).isoformat(),
+        "is_active": True,
+        "trashed_at": None
     }
     post = await directus_client.create("posts", payload)
     return _to_post(post, owner=user)
@@ -30,9 +33,17 @@ async def admin_get_user_post_by_id_from_database(user_id: int, post_id: int) ->
     if org_id and str(user.organization_id) != str(org_id):
         return None
 
-    post = await directus_client.get_by_id("posts", post_id)
+    post = await directus_client.get_by_id(
+        "posts", 
+        post_id,
+        )
     if not post:
         return None
+
+    # If the post is trashed or inactive, treat as NOT FOUND (404)
+    if post.get("trashed_at") is not None or post.get("is_active") is False:
+        return None
+
     post_user_id = post.get("user_id")
     if isinstance(post_user_id, dict):
         post_user_id = post_user_id.get("id")
@@ -62,7 +73,15 @@ async def admin_update_post_by_id_in_database(user_id: int, post_id: int, data: 
 
 async def admin_delete_post_by_id_from_database(user_id: int, post_id: int) -> Post | None:
     post = await admin_get_user_post_by_id_from_database(user_id, post_id)
-    if post:
-        await directus_client.delete("posts", str(post_id))
-    return post
+    if not post:
+        return None
+    
+    # We are passing these payload to update the user. Instead of deleting it, is_active is turned False. 
+    payload = {
+        "is_active": False,
+        "trashed_at": datetime.now(UTC).isoformat(),
+    }
+    updated = await directus_client.update("posts", str(post_id), payload)
+    return _to_post(updated, owner=post.owner_id)
+  
 

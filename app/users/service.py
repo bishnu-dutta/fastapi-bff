@@ -42,7 +42,7 @@ async def create_user(data: CreateUserRequest):
             organization_id=data.organization_id,
             role=UserRole.USER,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:  
         delete_keycloak_user(keycloak_sub)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
