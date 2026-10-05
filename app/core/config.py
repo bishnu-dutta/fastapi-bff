@@ -3,6 +3,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    APP_NAME: str = "FastAPI BFF"
+    APP_DESCRIPTION: str = "Backend For Frontend (BFF) integrating Keycloak Auth and Directus CMS"
+    APP_VERSION: str = "0.1.0"
+    DOCS_URL: str | None = "/docs"
+    REDOC_URL: str | None = "/redoc"
+    OPENAPI_URL: str | None = "/openapi.json"
+
     database_url : str
     secret_key: SecretStr
     algorithm: str 

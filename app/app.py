@@ -1,3 +1,4 @@
+from app.core.config import settings
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,15 +15,26 @@ from app.posts.router import router as posts_router
 from app.users.router import router as users_router
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-    # await async_engine.dispose()
-
-
 setup_logging()
-app = FastAPI()
-app.include_router(users_router)
+
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
+    version=settings.APP_VERSION,
+    # Below are URLs, you can rename the path and it will point to that
+    docs_url=settings.DOCS_URL,
+    redoc_url=settings.REDOC_URL,
+    openapi_url=settings.OPENAPI_URL,
+    # Uses our tag created in routers to point to them.
+    openapi_tags=[
+        {"name": "auth", "description": "Authentication and user token operations with Keycloak."},
+        {"name": "users", "description": "User profile management with dual-write to Directus."},
+        {"name": "posts", "description": "Post management with dual-write to Directus."},
+        {"name": "organizations", "description": "Organization and role management."},
+    ],
+)
+
 app.include_router(auth_router)
 app.include_router(posts_router)
 app.include_router(organizations_router)
