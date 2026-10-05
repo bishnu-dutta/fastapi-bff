@@ -1,3 +1,4 @@
+import logging
 import uuid
 from functools import lru_cache
 
@@ -10,6 +11,8 @@ from app.core.config import settings
 from app.models import UserRole
 from app.organizations.request import AdminCreateUserRequest
 from app.users.request import CreateUserRequest
+
+logger = logging.getLogger(__name__)
 
 REALM_BASE = f"{settings.KEYCLOAK_SERVER_URL}/realms/{settings.KEYCLOAK_REALM}"
 ADMIN_BASE = f"{settings.KEYCLOAK_SERVER_URL}/admin/realms/{settings.KEYCLOAK_REALM}"
@@ -98,10 +101,9 @@ def create_keycloak_user(
     if send_verification_email:
         try:
             send_verify_email(sub)
-        # blind exception, fix later
-        except Exception:  # noqa: BLE001, S110
-            # We don't fail registration if SMTP delivery fails, but log/let user know
-            pass
+        # blind exception, fixed
+        except Exception:  
+            logger.exception("Failed to send verification email to user %s", sub)
 
     return sub
 
@@ -182,9 +184,10 @@ def delete_keycloak_user(sub: str) -> None:
             headers={"Authorization": f"Bearer {admin_token}"},
             timeout=10,
         )
-    # blind exception, fix later
-    except Exception: # noqa: BLE001, S110
-        pass  
+    # blind exception, fixed
+    except Exception: 
+        logger.exception("Compensating action failed: could not delete orphaned Keycloak user %s", sub)
+          
 
 
 def login_user(username: str, password: str, totp: str | None = None) -> dict:
@@ -215,9 +218,13 @@ def login_user(username: str, password: str, totp: str | None = None) -> dict:
                 error_msg = desc or "Invalid credentials or missing TOTP/MFA code."
             else:
                 error_msg = desc or err or error_msg
-        # blind exception, fix later
-        except Exception: # noqa: BLE001, S110
-            pass
+        # blind exception, fixed
+        except (ValueError, KeyError, TypeError) as exc: 
+            logger.debug(
+                "Failed to parse keycloak login error JSON: %s",
+                exc,
+                exc_info=True
+            )
         raise KeycloakError(error_msg, resp.status_code)
     return resp.json()
 

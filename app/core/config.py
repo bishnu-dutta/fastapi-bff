@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     KEYCLOAK_SERVER_URL:str
     KEYCLOAK_REALM:str
     KC_HOSTNAME:str
+    KC_POSTGRES_USER:str
+    KC_POSTGRES_PASSWORD:str
+    KC_POSTGRES_DB:str
+    KEYCLOAK_ADMIN:str
+    KEYCLOAK_ADMIN_PASSWORD:str
 
     model_config = SettingsConfigDict(
         env_file=".env",

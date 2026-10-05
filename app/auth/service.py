@@ -21,12 +21,13 @@ def get_current_claims(token: str = Depends(oauth2_scheme)) -> dict:
 async def get_current_auth_user(claims: dict = Depends(get_current_claims)) -> User:
     """Resolves the token's 'sub' to our local Postgres user record."""
     sub = claims.get("sub")
+    org_id = claims.get("organization_id")
     user = await find_by_keycloak_sub(sub)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found in local database")
     
     # Using a generator dependency to set the org_id in context ---- we are using org_id from user, I want you take org_id from sub because we have it there 
-    context_token = org_id_context.set(user.organization_id)
+    context_token = org_id_context.set(org_id)
     try:
         yield user
     finally:

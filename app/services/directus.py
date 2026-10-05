@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 
@@ -8,6 +9,8 @@ from app.core.config import settings
 from app.models import Organization, Post, User, UserRole
 
 from .provider import BaseDataProvider
+
+logger = logging.getLogger(__name__)
 
 
 class DirectusClient(BaseDataProvider):
@@ -35,9 +38,13 @@ class DirectusClient(BaseDataProvider):
                         err_json = resp.json()
                         if "errors" in err_json and len(err_json["errors"]) > 0:
                             err_detail = err_json["errors"][0].get("message", err_detail)
-                    # blind exception, fix later
-                    except Exception: # noqa: BLE001, S110
-                        pass 
+                    # blind exception, fixed
+                    except (ValueError, KeyError, TypeError) as exc: 
+                        logger.debug(
+                            "Failed to parse directus error JSON response: %s",
+                            exc,
+                            exc_info=True
+                        ) 
                     raise HTTPException(
                         status_code=resp.status_code,
                         detail=f"Directus error: {err_detail}",
@@ -79,9 +86,13 @@ def _to_user(data: dict | None) -> User | None:
         raw_uid = raw_org.get("uid") or raw_org.get("id")
         try:
             org_id = uuid.UUID(str(raw_uid)) if raw_uid else None
-            
-        # blind exception, fix later
-        except Exception: # noqa: BLE001
+        # blind exception, fixed
+        except (ValueError, KeyError, TypeError) as exc: 
+            logger.warning(
+                "Invalid organization UUID %r encountered: %s", 
+                raw_uid, 
+                exc
+            )
             org_id = None
         
         org_obj = Organization(
@@ -91,8 +102,13 @@ def _to_user(data: dict | None) -> User | None:
     elif isinstance(raw_org, str):
         try:
             org_id = uuid.UUID(raw_org)
-        # blind exception, fix later
-        except Exception: # noqa: BLE001
+        # blind exception, fixed
+        except (ValueError, KeyError, TypeError) as exc: 
+            logger.warning(
+                "Invalid organization UUID %r encountered: %s", 
+                raw_org, 
+                exc
+            )
             org_id = None
     else:
         org_id = raw_org
@@ -118,17 +134,17 @@ def _to_post(data: dict | None, owner: User | None = None) -> Post | None:
     if isinstance(created_at, str):
         try:
             created_at = datetime.fromisoformat(created_at)
-        # blind exception, fix later
-        except Exception: # noqa: BLE001, S110
-            pass
-
+        # blind exception, fixed
+        except (ValueError, TypeError) as exc:
+            logger.warning("Failed to parse created_at timestamp '%s': %s", created_at, exc)
+            
     updated_at = data.get("updated_at")
     if isinstance(updated_at, str):
         try:
             updated_at = datetime.fromisoformat(updated_at)
-        # blind exception, fix later
-        except Exception: # noqa: BLE001, S110
-            pass 
+        # blind exception, fixed
+        except (ValueError, TypeError) as exc:
+            logger.warning("Failed to parse updated_at timestamp '%s': %s", updated_at, exc)
     
     raw_user = data.get("user_id")
     if isinstance(raw_user, dict):
