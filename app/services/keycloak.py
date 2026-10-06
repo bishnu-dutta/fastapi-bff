@@ -102,7 +102,7 @@ def create_keycloak_user(
         try:
             send_verify_email(sub)
         # blind exception, fixed
-        except Exception:  
+        except (KeycloakError, httpx.RequestError):  
             logger.exception("Failed to send verification email to user %s", sub)
 
     return sub
@@ -185,7 +185,7 @@ def delete_keycloak_user(sub: str) -> None:
             timeout=10,
         )
     # blind exception, fixed
-    except Exception: 
+    except (KeycloakError, httpx.RequestError):
         logger.exception("Compensating action failed: could not delete orphaned Keycloak user %s", sub)
           
 

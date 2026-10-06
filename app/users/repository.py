@@ -1,6 +1,6 @@
 
-from datetime import datetime, UTC
 import uuid
+from datetime import UTC, datetime
 
 from pydantic import EmailStr
 

@@ -1,5 +1,6 @@
+import logging
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import HTTPException, status
@@ -8,8 +9,6 @@ from app.core.config import settings
 from app.models import Organization, Post, User, UserRole
 
 from .provider import BaseDataProvider
-
-import logging
 
 logger = logging.getLogger(__name__)
 

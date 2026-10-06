@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException, status
 
 from app.auth.helpers import CurrentUser
@@ -22,6 +24,8 @@ from .repository import (
 )
 from .request import CreateUserRequest
 
+logger = logging.getLogger(__name__)
+
 
 async def create_user(data: CreateUserRequest):
     existing_user = await find_user_by_email_and_username(data.email, data.username)
@@ -42,12 +46,18 @@ async def create_user(data: CreateUserRequest):
             organization_id=data.organization_id,
             role=UserRole.USER,
         )
-    except Exception:  
+    except Exception as exc:  
         delete_keycloak_user(keycloak_sub)
+        # If Directus raised an HTTPException, keep and re-raise it
+        if isinstance(exc, HTTPException):
+            raise
+
+        # Otherwise it's an unexpected Python error: log the traceback and return 500
+        logger.exception("Unexpected error saving user for keycloak_sub %s", keycloak_sub)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Organization '{data.organization_id}' not found",
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected error occurred while creating user in database.",
+        ) from exc
     return user
 
 

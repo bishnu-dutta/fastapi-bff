@@ -1,4 +1,3 @@
-from app.services.directus import logger
 from fastapi import HTTPException, status
 
 from app.models import User
@@ -10,6 +9,7 @@ from app.organizations.repository import (
 from app.organizations.request import AdminCreateUserRequest
 from app.posts.repository import get_all_post_by_user_id_from_database
 from app.posts.request import CreatePostRequest, UpdatePostRequest
+from app.services.directus import logger
 from app.services.keycloak import (
     KeycloakError,
     create_keycloak_user,
@@ -53,13 +53,19 @@ async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
             role=data.role,
         )
     # blind exception, fix later
-    except Exception as e:
-        logger.exception("Compensating action failed: could not delete orphaned Keycloak user %s", e)  
+    except Exception as exc: 
         delete_keycloak_user(keycloak_sub)
+
+        # If Directus already raised an HTTPException, preserve and re-raise it
+        if isinstance(exc, HTTPException):
+            raise
+        
+        # Otherwise it's an unexpected Python error: log the traceback and return 500
+        logger.exception("Failed to save user in database for keycloak_sub: %s", keycloak_sub)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save user in database: {e}",
-        )
+            detail=f"Failed to save user in database: {exc}",
+        ) from exc
     return user
     
 
