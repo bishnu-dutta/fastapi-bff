@@ -129,6 +129,8 @@ def _to_user(data: dict | None) -> User | None:
         last_name=data.get("last_name"),
         keycloak_sub=data.get("keycloak_sub"),
         is_verified=data.get("is_verified") or False,
+        provider=data.get("provider", "KeycloakOICD"),
+        hashed_password=data.get("hashed_password"),
         role=data.get("role", UserRole.USER),
         organization_id=org_id,
         organization=org_obj,  # <-- Attaches the Organization object!

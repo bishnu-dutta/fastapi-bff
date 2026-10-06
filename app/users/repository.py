@@ -22,6 +22,8 @@ async def save_user_to_database(data: CreateUserRequest | AdminCreateUserRequest
         "keycloak_sub": keycloak_sub,
         "first_name": data.first_name,
         "last_name": data.last_name,
+        "provider": "KeycloakOICD",
+        "hashed_password": None,
         "created_at": datetime.now(UTC).isoformat(),
         "is_active": True,
         "trashed_at": None,

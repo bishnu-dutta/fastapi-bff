@@ -33,7 +33,8 @@ class User(BaseMixin):
     keycloak_sub: uuid.UUID
     organization_id: uuid.UUID 
     is_verified: bool = False
-    # hashed_password: str
+    hashed_password: str | None = None
+    provider: str = "KeycloakOICD"
     # otp_hash: str | None = None
     # otp_expiry: datetime | None = None
     # otp_attempts: int = 0
