@@ -147,7 +147,7 @@ async def delete_user_by_id(id: int) -> User | None:
         "trashed_at": datetime.now(UTC).isoformat(),
         "is_active":False
     }
-    updated = await directus_client.update("users", str(id), payload)
+    updated = await directus_client.update("users", str(id), payload, params={"fields": "*,organization_id.*"})
     return _to_user(updated)
 
 

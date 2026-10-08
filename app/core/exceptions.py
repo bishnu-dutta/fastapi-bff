@@ -14,3 +14,4 @@ async def custom_http_exception_handler(
 
 def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(HTTPException, custom_http_exception_handler)
+    app.add_exception_handler(StarletteHTTPException, custom_http_exception_handler)

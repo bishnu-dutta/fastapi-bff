@@ -100,7 +100,7 @@ def create_keycloak_user(
 
     if send_verification_email:
         try:
-            send_verify_email(sub)
+            send_verify_email(sub, settings.Base_url)
         # blind exception, fixed
         except (KeycloakError, httpx.RequestError):  
             logger.exception("Failed to send verification email to user %s", sub)
@@ -117,6 +117,8 @@ def send_verify_email(sub: str, redirect_uri: str | None = None) -> None:
     if redirect_uri:
         params["redirect_uri"] = redirect_uri
 
+    # PUT /admin/realms/{realm}/users/{user-id}/execute-actions-email.
+    # This endpoint allows administrators to trigger an email containing a link for the user to execute specific required actions
     resp = httpx.put(
         f"{ADMIN_BASE}/users/{sub}/execute-actions-email",
         params=params,
@@ -126,6 +128,25 @@ def send_verify_email(sub: str, redirect_uri: str | None = None) -> None:
     )
     if resp.status_code not in (200, 204):
         raise KeycloakError(f"Failed to send Keycloak verification email: {resp.text}", resp.status_code)
+
+
+def send_reset_password_email(sub: str, redirect_uri: str | None = None) -> None:
+    """
+    Triggers Keycloak's built-in password reset email delivery via configured SMTP (MailHog).
+    """
+    admin_token = _get_admin_token()
+    params = {"client_id": settings.KEYCLOAK_LOGIN_CLIENT_ID}
+    if redirect_uri:
+        params["redirect_uri"] = redirect_uri
+    resp = httpx.put(
+        f"{ADMIN_BASE}/users/{sub}/execute-actions-email",
+        params=params,
+        json=["UPDATE_PASSWORD"],
+        headers={"Authorization": f"Bearer {admin_token}"},
+        timeout=10,
+    )
+    if resp.status_code not in (200, 204):
+        raise KeycloakError(f"Failed to send Keycloak password reset email: {resp.text}", resp.status_code)
 
 
 

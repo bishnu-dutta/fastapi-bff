@@ -1,3 +1,4 @@
+from app.core.config import settings
 import logging
 
 from fastapi import HTTPException, status
@@ -9,8 +10,13 @@ from app.services.keycloak import (
     create_keycloak_user,
     delete_keycloak_user,
     update_keycloak_user,
+    send_verify_email,
+    send_reset_password_email,
+    get_keycloak_user_by_email
 )
-from app.users.request import UpdateUserRequest
+
+from app.services.directus import directus_client
+from app.users.request import UpdateUserRequest, ForgotPasswordRequest, ResendVerificationMailRequest
 
 from .repository import (
     all_users,
@@ -150,6 +156,48 @@ async def update_user(current_user: CurrentUser, data: UpdateUserRequest):
         )
     return user
 
+async def update_user_password(current_user: CurrentUser, data:ForgotPasswordRequest):
+    user = await find_user_by_email(data.email)
+    if user and user.keycloak_sub:
+        try:
+            send_reset_password_email(str(user.keycloak_sub))
+        except KeycloakError as exc:
+            logger.error("Failed to trigger reset password email: %s", exc)
+            
+    return {"message": "If this email is registered, a password reset link has been sent."}
+
+async def resend_verification_mail(data:ResendVerificationMailRequest):
+    user = await find_user_by_email(data.email)
+    if not user or not user.keycloak_sub:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found with this email",
+        )
+    kc_user = get_keycloak_user_by_email(data.email)
+    if not kc_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in authentication provider",
+        )
+    if kc_user.get("emailVerified", False):
+        # Sync Directus if it wasn't marked verified yet
+        if not user.is_verified:
+            await directus_client.update("users", str(user.id), {"is_verified": True})
+            
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified.",
+        )
+    try:
+        send_verify_email(str(user.keycloak_sub), settings.Base_url)
+    except KeycloakError as exc:
+        logger.error("Failed to send verification email: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email.",
+        )
+            
+    return {"message": "A new verification link has been sent to your email."}
 
 # async def send_forgot_password_link(email:str):
 

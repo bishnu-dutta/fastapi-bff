@@ -1,3 +1,7 @@
+from app.users.service import resend_verification_mail
+from app.users.request import ResendVerificationMailRequest
+from app.users.service import update_user_password
+from app.users.request import ForgotPasswordRequest
 from typing import Annotated
 
 from fastapi import APIRouter, Query, status
@@ -70,6 +74,23 @@ async def delete_user_api(current_user: CurrentUser):
 async def update_user_api(data: UpdateUserRequest, current_user: CurrentUser):
     return await update_user(current_user, data)
 
+
+@router.put("/forgot-password", 
+    status_code=status.HTTP_200_OK,
+    summary="Reset password",
+    description="Reset password of a user if the user is verified and token is valid"
+)
+async def forgot_password_api(data: ForgotPasswordRequest, current_user: CurrentUser):
+    return await update_user_password(current_user, data)
+
+
+@router.post("/resend-verification-mail", 
+    status_code=status.HTTP_200_OK,
+    summary="Resend verification mail",
+    description="Resend verification mail to a user if the user is not verified"
+)
+async def resend_verification_mail_api(data: ResendVerificationMailRequest):
+    return await resend_verification_mail(data)
 
 # @router.post("/forgot-password", 
 #     response_model=MessageResponse, 

@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     KC_POSTGRES_DB:str
     KEYCLOAK_ADMIN:str
     KEYCLOAK_ADMIN_PASSWORD:str
+    Base_url:str
 
     model_config = SettingsConfigDict(
         env_file=".env",

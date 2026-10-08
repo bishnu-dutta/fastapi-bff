@@ -38,10 +38,17 @@ def LoggingMiddleware(app:FastAPI):
         process_time = time.perf_counter() - start_time
         detail = getattr(request.state, "error_detail", None)
 
+        if not detail:
+            detail = (
+                "Successfully completed operation for endpoint"
+                if response.status_code < 400
+                else f"Request failed with status {response.status_code} ({HTTPStatus(response.status_code).phrase})"
+            )
+        
         message = f"Method: {request.method}\nURL: {request.url}\n" \
                   f"IP: {client_ip}\nPORT: {client_port}\n" \
                   f"STATUS: {response.status_code} {HTTPStatus(response.status_code).phrase}\n" \
-                  f"Message: {detail if detail else 'Successfully completed operation for endpoint'}\n" \
+                  f"Message: {detail}\n" \
                   f"Time taken: {process_time} seconds\n"
 
         if response.status_code >= 500:
