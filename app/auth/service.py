@@ -1,11 +1,13 @@
 
+from app.services.keycloak import refresh_user_token
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from app.auth.repository import find_by_keycloak_sub
 from app.core.context import org_id_context
 from app.models import User
-from app.services.keycloak import KeycloakError, decode_access_token, login_user
+from app.services.keycloak import decode_access_token, login_user
+from app.core.config import settings
 
 from .response import TokenResponse
 
@@ -34,14 +36,13 @@ async def get_current_auth_user(claims: dict = Depends(get_current_claims)) -> U
         org_id_context.reset(context_token)
 
 def keycloak_login_user(username:str, password:str):
-    try:
-        token = login_user(username, password)
-        return TokenResponse(**token)
-    except KeycloakError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED if e.status_code == 400 else e.status_code,
-            detail=e.message,
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    token = login_user(username, password)
+    return TokenResponse(**token)
+
+def keycloak_refresh_user_token(refresh_token: str) -> TokenResponse:
+    """Trades a refresh_token for a new access_token & refresh_token, extending the session."""
+    token = refresh_user_token(refresh_token)
+    return TokenResponse(**token)
+
 
 

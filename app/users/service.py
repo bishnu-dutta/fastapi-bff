@@ -6,7 +6,6 @@ from fastapi import HTTPException, status
 from app.auth.helpers import CurrentUser
 from app.models import UserRole
 from app.services.keycloak import (
-    KeycloakError,
     create_keycloak_user,
     delete_keycloak_user,
     update_keycloak_user,
@@ -40,10 +39,7 @@ async def create_user(data: CreateUserRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email or username already exists",
         )
-    try:
-        keycloak_sub = create_keycloak_user(data, data.organization_id)
-    except KeycloakError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    keycloak_sub = create_keycloak_user(data, data.organization_id)
 
     try:
         user = await save_user_to_database(
@@ -101,10 +97,7 @@ async def delete_user(current_user: CurrentUser):
             detail="User not found",
         )
     if user.keycloak_sub:
-        try:
-            delete_keycloak_user(user.keycloak_sub)
-        except KeycloakError as e:
-            raise HTTPException(status_code=e.status_code, detail=e.message)    
+        delete_keycloak_user(user.keycloak_sub)
     return user
 
 
@@ -139,13 +132,10 @@ async def update_user(current_user: CurrentUser, data: UpdateUserRequest):
 
     # update keycloak
     if current_user.keycloak_sub:
-        try:
-            update_keycloak_user(
-                str(current_user.keycloak_sub),
-                data.model_dump(exclude_unset=True)
-            )
-        except KeycloakError as e:
-            raise HTTPException(status_code=e.status_code, detail=e.message)
+        update_keycloak_user(
+            str(current_user.keycloak_sub),
+            data.model_dump(exclude_unset=True)
+        )
 
     # update directus
     user = await update_user_by_id(current_user.id, data)
@@ -159,10 +149,7 @@ async def update_user(current_user: CurrentUser, data: UpdateUserRequest):
 async def update_user_password(current_user: CurrentUser, data:ForgotPasswordRequest):
     user = await find_user_by_email(data.email)
     if user and user.keycloak_sub:
-        try:
-            send_reset_password_email(str(user.keycloak_sub))
-        except KeycloakError as exc:
-            logger.error("Failed to trigger reset password email: %s", exc)
+        send_reset_password_email(str(user.keycloak_sub))
             
     return {"message": "If this email is registered, a password reset link has been sent."}
 
@@ -188,14 +175,7 @@ async def resend_verification_mail(data:ResendVerificationMailRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already verified.",
         )
-    try:
-        send_verify_email(str(user.keycloak_sub), settings.Base_url)
-    except KeycloakError as exc:
-        logger.error("Failed to send verification email: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification email.",
-        )
+    send_verify_email(str(user.keycloak_sub), settings.Base_url)
             
     return {"message": "A new verification link has been sent to your email."}
 

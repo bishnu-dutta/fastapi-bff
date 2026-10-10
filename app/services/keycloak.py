@@ -21,12 +21,6 @@ LOGOUT_URL = f"{REALM_BASE}/protocol/openid-connect/logout"
 CERTS_URL = f"{REALM_BASE}/protocol/openid-connect/certs"
 
 
-class KeycloakError(Exception):
-    def __init__(self, message: str, status_code: int = 400):
-        self.message = message
-        self.status_code = status_code
-
-
 def _get_admin_token() -> str:
     """
     Client-credentials grant for the confidential admin client. That client
@@ -43,7 +37,10 @@ def _get_admin_token() -> str:
         timeout=10,
     )
     if resp.status_code != 200:
-        raise KeycloakError(f"Could not obtain Keycloak admin token: {resp.text}", 502)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not obtain Keycloak admin token: {resp.text}",
+        )
     return resp.json()["access_token"]
 
 
@@ -60,7 +57,10 @@ def create_keycloak_user(
     """
     admin_token = _get_admin_token()
     if not user.email:
-        raise KeycloakError("Email is required", 400)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is required",
+        )
 
     payload = {
         "username": user.username,
@@ -89,20 +89,29 @@ def create_keycloak_user(
         timeout=10,
     )
     if resp.status_code == 409:
-        raise KeycloakError("Username or email already exists in Keycloak", 409)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username or email already exists in Keycloak",
+        )
     if resp.status_code != 201:
-        raise KeycloakError(f"Failed to create Keycloak user: {resp.text}", 502)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to create Keycloak user: {resp.text}",
+        )
 
     location = resp.headers.get("Location", "")
     sub = location.rstrip("/").split("/")[-1]
     if not sub:
-        raise KeycloakError("Keycloak did not return a user id", 502)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Keycloak did not return a user id",
+        )
 
     if send_verification_email:
         try:
             send_verify_email(sub, settings.Base_url)
         # blind exception, fixed
-        except (KeycloakError, httpx.RequestError):  
+        except (HTTPException, httpx.RequestError):  
             logger.exception("Failed to send verification email to user %s", sub)
 
     return sub
@@ -127,7 +136,10 @@ def send_verify_email(sub: str, redirect_uri: str | None = None) -> None:
         timeout=10,
     )
     if resp.status_code not in (200, 204):
-        raise KeycloakError(f"Failed to send Keycloak verification email: {resp.text}", resp.status_code)
+        raise HTTPException(
+            status_code=resp.status_code,
+            detail=f"Failed to send Keycloak verification email: {resp.text}",
+        )
 
 
 def send_reset_password_email(sub: str, redirect_uri: str | None = None) -> None:
@@ -146,7 +158,10 @@ def send_reset_password_email(sub: str, redirect_uri: str | None = None) -> None
         timeout=10,
     )
     if resp.status_code not in (200, 204):
-        raise KeycloakError(f"Failed to send Keycloak password reset email: {resp.text}", resp.status_code)
+        raise HTTPException(
+            status_code=resp.status_code,
+            detail=f"Failed to send Keycloak password reset email: {resp.text}",
+        )
 
 
 
@@ -188,7 +203,10 @@ def update_keycloak_user(sub: str, data: dict) -> None:
             timeout=10,
         )
         if resp.status_code not in (200, 204):
-            raise KeycloakError(f"Failed to update Keycloak user: {resp.text}", resp.status_code)
+            raise HTTPException(
+                status_code=resp.status_code,
+                detail=f"Failed to update Keycloak user: {resp.text}",
+            )
 
 
 
@@ -206,7 +224,7 @@ def delete_keycloak_user(sub: str) -> None:
             timeout=10,
         )
     # blind exception, fixed
-    except (KeycloakError, httpx.RequestError):
+    except (HTTPException, httpx.RequestError):
         logger.exception("Compensating action failed: could not delete orphaned Keycloak user %s", sub)
           
 
@@ -246,7 +264,10 @@ def login_user(username: str, password: str, totp: str | None = None) -> dict:
                 exc,
                 exc_info=True
             )
-        raise KeycloakError(error_msg, resp.status_code)
+        raise HTTPException(
+            status_code=resp.status_code,
+            detail=error_msg,
+        )
     return resp.json()
 
 
@@ -261,7 +282,29 @@ def logout_user(refresh_token: str) -> None:
 
     resp = httpx.post(LOGOUT_URL, data=data, timeout=10)
     if resp.status_code not in (200, 204):
-        raise KeycloakError(f"Logout failed: {resp.text}", 400)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Logout failed: {resp.text}",
+        )
+
+
+def refresh_user_token(refresh_token: str) -> dict:
+    """Trades a refresh_token for a new access_token & refresh_token, extending the session."""
+    data = {
+        "grant_type": "refresh_token",
+        "client_id": settings.KEYCLOAK_LOGIN_CLIENT_ID,
+        "refresh_token": refresh_token,
+    }
+    if settings.KEYCLOAK_LOGIN_CLIENT_SECRET:
+        data["client_secret"] = settings.KEYCLOAK_LOGIN_CLIENT_SECRET
+    resp = httpx.post(TOKEN_URL, data=data, timeout=10)
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+    return resp.json()
+
 
 
 @lru_cache
@@ -288,7 +331,7 @@ def decode_access_token(token: str) -> dict:
                 "verify_aud": bool(settings.TOKEN_AUDIENCE), 
                 "verify_iss": False,
                 #Stalls expiration checks entirely
-                "verify_exp": False,  
+                "verify_exp": True,  
             },
         )
     except jwt.ExpiredSignatureError:

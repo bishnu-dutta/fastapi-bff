@@ -11,7 +11,6 @@ from app.posts.repository import get_all_post_by_user_id_from_database
 from app.posts.request import CreatePostRequest, UpdatePostRequest
 from app.services.directus import logger
 from app.services.keycloak import (
-    KeycloakError,
     create_keycloak_user,
     delete_keycloak_user,
     update_keycloak_user,
@@ -40,10 +39,8 @@ async def admin_add_user(data: AdminCreateUserRequest, admin_user: User):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email or username already exists",
         )
-    try:
-        keycloak_sub = create_keycloak_user(data, admin_user.organization_id, data.role)
-    except KeycloakError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    keycloak_sub = create_keycloak_user(data, admin_user.organization_id, data.role)
+
 
     try:
         user = await save_user_to_database(
@@ -98,13 +95,10 @@ async def admin_update_user_by_id(id: int, data: UpdateUserRequest, admin_user: 
             
     # update keycloak
     if user.keycloak_sub:
-        try:
-            update_keycloak_user(
-                str(user.keycloak_sub),
-                data.model_dump(exclude_unset=True)
-            )
-        except KeycloakError as e:
-            raise HTTPException(status_code=e.status_code, detail=e.message)
+        update_keycloak_user(
+            str(user.keycloak_sub),
+            data.model_dump(exclude_unset=True)
+        )
 
     # update directus
     user = await update_user_by_id(id, data)
@@ -121,10 +115,7 @@ async def admin_delete_user_by_id(id: int, admin_user: User):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found in your organization")
         
     if user.keycloak_sub:
-        try:
-            delete_keycloak_user(user.keycloak_sub)
-        except KeycloakError as e:
-            raise HTTPException(status_code=e.status_code, detail=e.message)    
+        delete_keycloak_user(user.keycloak_sub)    
     return user
 
 

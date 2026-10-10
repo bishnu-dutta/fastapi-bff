@@ -10,6 +10,11 @@ endpoint_rules = {
         "rate_limit": 5,
         "time_window": 60,
     },
+    # login route
+    "/auth/login": {
+        "rate_limit": 5,
+        "time_window": 60,
+    },
     # users route
     "/users/create": {
         "rate_limit": 5,
